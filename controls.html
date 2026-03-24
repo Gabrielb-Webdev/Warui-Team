@@ -206,10 +206,30 @@
     </select>
   </div>
 
-  <p class="status" id="status-msg">Listo</p>
+  <p class="status" id="status-msg">Conectando...</p>
 </div>
 
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  // ── REEMPLAZÁ ESTO CON TU CONFIG DE FIREBASE ──
+  const firebaseConfig = {
+    apiKey:            "TU_API_KEY",
+    authDomain:        "TU_PROJECT.firebaseapp.com",
+    databaseURL:       "https://TU_PROJECT-default-rtdb.firebaseio.com",
+    projectId:         "TU_PROJECT",
+    storageBucket:     "TU_PROJECT.appspot.com",
+    messagingSenderId: "TU_SENDER_ID",
+    appId:             "TU_APP_ID"
+  };
+  // ─────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+  const scoreRef = ref(db, 'scoreboard');
+
   let state = {
     p1: '', p2: '',
     sp1: '', sp2: '',
@@ -218,19 +238,25 @@
     round: 'WINNERS QUARTERS'
   };
 
-  function saveState() {
-    localStorage.setItem('warui_scoreboard', JSON.stringify(state));
+  function setStatus(text, ok = true) {
     const msg = document.getElementById('status-msg');
-    msg.textContent = '✓ Sincronizado';
+    msg.textContent = text;
+    msg.style.color = ok ? 'var(--cyan)' : 'var(--magenta)';
     msg.style.opacity = '1';
-    setTimeout(() => { msg.textContent = 'Listo'; msg.style.opacity = '0.6'; }, 1500);
+    if (ok) setTimeout(() => { msg.textContent = 'Listo'; msg.style.opacity = '0.6'; msg.style.color = 'var(--cyan)'; }, 1500);
+  }
+
+  function saveState() {
+    set(scoreRef, state)
+      .then(() => setStatus('✓ Sincronizado'))
+      .catch(() => setStatus('✗ Error de conexión', false));
   }
 
   function update() {
-    state.p1   = document.getElementById('in-p1').value.trim();
-    state.p2   = document.getElementById('in-p2').value.trim();
-    state.sp1  = document.getElementById('in-sp1').value.trim();
-    state.sp2  = document.getElementById('in-sp2').value.trim();
+    state.p1     = document.getElementById('in-p1').value.trim();
+    state.p2     = document.getElementById('in-p2').value.trim();
+    state.sp1    = document.getElementById('in-sp1').value.trim();
+    state.sp2    = document.getElementById('in-sp2').value.trim();
     state.bestof = document.getElementById('in-bestof').value;
     state.round  = document.getElementById('in-round').value;
     saveState();
@@ -251,20 +277,27 @@
     saveState();
   }
 
-  // Restaurar estado guardado al cargar
-  window.addEventListener('load', () => {
-    const saved = localStorage.getItem('warui_scoreboard');
-    if (!saved) return;
-    const s = JSON.parse(saved);
+  // Exponer funciones a los botones onclick del HTML
+  window.update = update;
+  window.adjustScore = adjustScore;
+  window.resetScores = resetScores;
+
+  // Cargar estado desde Firebase al abrir
+  onValue(scoreRef, (snapshot) => {
+    const s = snapshot.val();
+    if (!s) { setStatus('Listo'); return; }
     state = s;
-    document.getElementById('in-p1').value  = s.p1;
-    document.getElementById('in-p2').value  = s.p2;
-    document.getElementById('in-sp1').value = s.sp1;
-    document.getElementById('in-sp2').value = s.sp2;
+    document.getElementById('in-p1').value  = s.p1 || '';
+    document.getElementById('in-p2').value  = s.p2 || '';
+    document.getElementById('in-sp1').value = s.sp1 || '';
+    document.getElementById('in-sp2').value = s.sp2 || '';
     document.getElementById('ctrl-s1').textContent = s.score1;
     document.getElementById('ctrl-s2').textContent = s.score2;
-    document.getElementById('in-bestof').value = s.bestof;
-    document.getElementById('in-round').value  = s.round;
+    document.getElementById('in-bestof').value = s.bestof || 'BEST OF 3';
+    document.getElementById('in-round').value  = s.round  || 'WINNERS QUARTERS';
+    setStatus('Listo');
+  }, (error) => {
+    setStatus('✗ Sin conexión — revisá tu config Firebase', false);
   });
 </script>
 </body>

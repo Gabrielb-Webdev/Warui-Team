@@ -289,30 +289,13 @@
 
 </div>
 
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-
-  // ── MISMA CONFIG QUE EN controls.html ──
-  const firebaseConfig = {
-    apiKey:            "TU_API_KEY",
-    authDomain:        "TU_PROJECT.firebaseapp.com",
-    databaseURL:       "https://TU_PROJECT-default-rtdb.firebaseio.com",
-    projectId:         "TU_PROJECT",
-    storageBucket:     "TU_PROJECT.appspot.com",
-    messagingSenderId: "TU_SENDER_ID",
-    appId:             "TU_APP_ID"
-  };
-  // ───────────────────────────────────────
-
-  const app = initializeApp(firebaseConfig);
-  const db  = getDatabase(app);
-  const scoreRef = ref(db, 'scoreboard');
-
+<script>
   const DEFAULT = {
-    p1: '', p2: '', sp1: '', sp2: '',
+    p1: '', p2: '',
+    sp1: '', sp2: '',
     score1: 0, score2: 0,
-    bestof: 'BEST OF 3', round: 'WINNERS QUARTERS'
+    bestof: 'BEST OF 3',
+    round: 'WINNERS QUARTERS'
   };
 
   function applyState(s) {
@@ -334,15 +317,18 @@
   }
 
   let current = { ...DEFAULT };
+  const saved = localStorage.getItem('warui_scoreboard');
+  if (saved) { current = JSON.parse(saved); }
   applyState(current);
 
-  onValue(scoreRef, (snapshot) => {
-    const next = snapshot.val();
-    if (!next) return;
-    if (next.score1 !== current.score1) flashScore('s1', next.score1 > current.score1);
-    if (next.score2 !== current.score2) flashScore('s2', next.score2 > current.score2);
-    current = next;
-    applyState(current);
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'warui_scoreboard' && e.newValue) {
+      const next = JSON.parse(e.newValue);
+      if (next.score1 !== current.score1) flashScore('s1', next.score1 > current.score1);
+      if (next.score2 !== current.score2) flashScore('s2', next.score2 > current.score2);
+      current = next;
+      applyState(current);
+    }
   });
 </script>
 </body>
